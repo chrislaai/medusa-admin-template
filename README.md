@@ -35,4 +35,4 @@ An open source composable commerce engine built for developers.
   </a>
 </p>
 
-## The Medusa Admin App. Included with the [`@medusajs/admin`](https://www.npmjs.com/package/@medusajs/admin) plugin. You shouldn't install this package separately.
+## The Medusa Admin App. Included with the [`@medusajs/admin`](https://www.npmjs.com/package/@medusajs/admin) plugin. You ~~shouldn't~~ install this package separately.
