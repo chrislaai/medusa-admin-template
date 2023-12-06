@@ -1,0 +1,7 @@
+/dist
+/build
+.vercel
+/ui/preview
+/ui/src/extensions
+.DS_Store
+/node_modules
