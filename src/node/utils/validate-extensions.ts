@@ -1,5 +1,5 @@
-import { parse, ParseResult, ParserOptions } from "@babel/parser"
-import traverse, { NodePath } from "@babel/traverse"
+import { parse, ParseResult, ParserOptions } from "@babel/parser";
+import traverse, { NodePath } from "@babel/traverse";
 import type {
   ExportDefaultDeclaration,
   ExportNamedDeclaration,
@@ -7,15 +7,15 @@ import type {
   ObjectMethod,
   ObjectProperty,
   SpreadElement,
-} from "@babel/types"
-import fse from "fs-extra"
-import path from "path"
-import { forbiddenRoutes, InjectionZone, injectionZones } from "../../client"
-import { logger } from "./logger"
-import { normalizePath } from "./normalize-path"
+} from "@babel/types";
+import fse from "fs-extra";
+import path from "path";
+import { forbiddenRoutes, InjectionZone, injectionZones } from "../../client";
+import { logger } from "./logger";
+import { normalizePath } from "./normalize-path";
 
 function isValidInjectionZone(zone: any): zone is InjectionZone {
-  return injectionZones.includes(zone)
+  return injectionZones.includes(zone);
 }
 
 /**
@@ -30,24 +30,24 @@ function validateWidgetConfigExport(
       p.type === "ObjectProperty" &&
       p.key.type === "Identifier" &&
       p.key.name === "zone"
-  ) as ObjectProperty | undefined
+  ) as ObjectProperty | undefined;
 
   if (!zoneProperty) {
-    return false
+    return false;
   }
 
-  let zoneIsValid = false
+  let zoneIsValid = false;
 
   if (zoneProperty.value.type === "StringLiteral") {
-    zoneIsValid = isValidInjectionZone(zoneProperty.value.value)
+    zoneIsValid = isValidInjectionZone(zoneProperty.value.value);
   } else if (zoneProperty.value.type === "ArrayExpression") {
     zoneIsValid = zoneProperty.value.elements.every(
       (zone) =>
         zone.type === "StringLiteral" && isValidInjectionZone(zone.value)
-    )
+    );
   }
 
-  return zoneIsValid
+  return zoneIsValid;
 }
 
 function validateRouteConfigExport(
@@ -58,16 +58,16 @@ function validateRouteConfigExport(
       p.type === "ObjectProperty" &&
       p.key.type === "Identifier" &&
       p.key.name === "link"
-  ) as ObjectProperty | undefined
+  ) as ObjectProperty | undefined;
 
   // Link property is optional for routes
   if (!linkProperty) {
-    return true
+    return true;
   }
 
-  const linkValue = linkProperty.value as ObjectExpression
+  const linkValue = linkProperty.value as ObjectExpression;
 
-  let labelIsValid = false
+  let labelIsValid = false;
 
   // Check that the linkProperty is an object and has a `label` property that is a string
   if (
@@ -79,10 +79,10 @@ function validateRouteConfigExport(
         p.value.type === "StringLiteral"
     )
   ) {
-    labelIsValid = true
+    labelIsValid = true;
   }
 
-  return labelIsValid
+  return labelIsValid;
 }
 
 function validateSettingConfigExport(
@@ -93,17 +93,17 @@ function validateSettingConfigExport(
       p.type === "ObjectProperty" &&
       p.key.type === "Identifier" &&
       p.key.name === "card"
-  ) as ObjectProperty | undefined
+  ) as ObjectProperty | undefined;
 
   // Link property is required for settings
   if (!cardProperty) {
-    return false
+    return false;
   }
 
-  const cardValue = cardProperty.value as ObjectExpression
+  const cardValue = cardProperty.value as ObjectExpression;
 
-  let hasLabel = false
-  let hasDescription = false
+  let hasLabel = false;
+  let hasDescription = false;
 
   if (
     cardValue.properties.some(
@@ -114,7 +114,7 @@ function validateSettingConfigExport(
         p.value.type === "StringLiteral"
     )
   ) {
-    hasLabel = true
+    hasLabel = true;
   }
 
   if (
@@ -126,50 +126,50 @@ function validateSettingConfigExport(
         p.value.type === "StringLiteral"
     )
   ) {
-    hasDescription = true
+    hasDescription = true;
   }
 
-  return hasLabel && hasDescription
+  return hasLabel && hasDescription;
 }
 
 function validateConfigExport(
   path: NodePath<ExportNamedDeclaration>,
   type: "widget" | "route" | "setting"
 ) {
-  let hasValidConfigExport = false
+  let hasValidConfigExport = false;
 
-  const declaration = path.node.declaration
+  const declaration = path.node.declaration;
   if (declaration && declaration.type === "VariableDeclaration") {
     const configDeclaration = declaration.declarations.find(
       (d) =>
         d.type === "VariableDeclarator" &&
         d.id.type === "Identifier" &&
         d.id.name === "config"
-    )
+    );
 
     if (
       configDeclaration &&
       configDeclaration.init.type === "ObjectExpression"
     ) {
-      const properties = configDeclaration.init.properties
+      const properties = configDeclaration.init.properties;
 
       if (type === "widget") {
-        hasValidConfigExport = validateWidgetConfigExport(properties)
+        hasValidConfigExport = validateWidgetConfigExport(properties);
       }
 
       if (type === "route") {
-        hasValidConfigExport = validateRouteConfigExport(properties)
+        hasValidConfigExport = validateRouteConfigExport(properties);
       }
 
       if (type === "setting") {
-        hasValidConfigExport = validateSettingConfigExport(properties)
+        hasValidConfigExport = validateSettingConfigExport(properties);
       }
     } else {
-      hasValidConfigExport = false
+      hasValidConfigExport = false;
     }
   }
 
-  return hasValidConfigExport
+  return hasValidConfigExport;
 }
 
 /**
@@ -181,9 +181,9 @@ function validateDefaultExport(
   path: NodePath<ExportDefaultDeclaration>,
   ast: ParseResult<any>
 ) {
-  let hasComponentExport = false
+  let hasComponentExport = false;
 
-  const declaration = path.node.declaration
+  const declaration = path.node.declaration;
   if (
     declaration &&
     (declaration.type === "Identifier" ||
@@ -192,20 +192,20 @@ function validateDefaultExport(
     const exportName =
       declaration.type === "Identifier"
         ? declaration.name
-        : declaration.id && declaration.id.name
+        : declaration.id && declaration.id.name;
 
     if (exportName) {
       try {
         traverse(ast, {
           VariableDeclarator({ node, scope }) {
-            let isDefaultExport = false
+            let isDefaultExport = false;
 
             if (node.id.type === "Identifier" && node.id.name === exportName) {
-              isDefaultExport = true
+              isDefaultExport = true;
             }
 
             if (!isDefaultExport) {
-              return
+              return;
             }
 
             traverse(
@@ -216,27 +216,27 @@ function validateDefaultExport(
                     path.node.argument?.type === "JSXElement" ||
                     path.node.argument?.type === "JSXFragment"
                   ) {
-                    hasComponentExport = true
+                    hasComponentExport = true;
                   }
                 },
               },
               scope
-            )
+            );
           },
-        })
+        });
       } catch (e) {
         logger.error(
           `There was an error while validating the default export of ${path}. The following error must be resolved before continuing:`,
           {
             error: e,
           }
-        )
-        return false
+        );
+        return false;
       }
     }
   }
 
-  return hasComponentExport
+  return hasComponentExport;
 }
 
 /**
@@ -244,68 +244,68 @@ function validateDefaultExport(
  *
  */
 async function validateWidget(file: string) {
-  const content = await fse.readFile(file, "utf-8")
+  const content = await fse.readFile(file, "utf-8");
 
   const parserOptions: ParserOptions = {
     sourceType: "module",
     plugins: ["jsx"],
-  }
+  };
 
   if (file.endsWith(".ts") || file.endsWith(".tsx")) {
-    parserOptions.plugins.push("typescript")
+    parserOptions.plugins.push("typescript");
   }
 
-  let ast: ParseResult<any>
+  let ast: ParseResult<any>;
 
   try {
-    ast = parse(content, parserOptions)
+    ast = parse(content, parserOptions);
   } catch (e) {
     logger.error(
       `An error occurred while parsing the Widget "${file}", and the Widget cannot be injected. The following error must be resolved before continuing:`,
       {
         error: e,
       }
-    )
-    return false
+    );
+    return false;
   }
 
-  let hasConfigExport = false
-  let hasComponentExport = false
+  let hasConfigExport = false;
+  let hasComponentExport = false;
 
   try {
     traverse(ast, {
-      ExportDefaultDeclaration: (path) => {
-        hasComponentExport = validateDefaultExport(path, ast)
+      ExportDefaultDeclaration: (path: any) => {
+        hasComponentExport = validateDefaultExport(path, ast);
       },
-      ExportNamedDeclaration: (path) => {
-        hasConfigExport = validateConfigExport(path, "widget")
+      ExportNamedDeclaration: (path: any) => {
+        hasConfigExport = validateConfigExport(path, "widget");
       },
-    })
+    });
   } catch (e) {
     logger.error(
       `An error occurred while validating the Widget "${file}". The following error must be resolved before continuing:`,
       {
         error: e,
       }
-    )
-    return false
+    );
+    return false;
   }
 
   if (hasConfigExport && !hasComponentExport) {
     if (!hasComponentExport) {
       logger.error(
         `The default export in the Widget "${file}" is invalid and the widget will not be injected. Please make sure that the default export is a valid React component.`
-      )
+      );
     }
   }
 
   if (!hasConfigExport && hasComponentExport) {
     logger.error(
       `The Widget config export in "${file}" is invalid and the Widget cannot be injected. Please ensure that the config is valid.`
-    )
+    );
   }
 
-  return hasConfigExport && hasComponentExport
+  return hasConfigExport && hasComponentExport;
 }
 
 /**
@@ -314,38 +314,38 @@ async function validateWidget(file: string) {
  * square brackets with colons, and then removing the "page.[jt]s" suffix.
  */
 function createPath(filePath: string): string {
-  const normalizedPath = normalizePath(filePath)
+  const normalizedPath = normalizePath(filePath);
 
-  const regex = /\[(.*?)\]/g
-  const strippedPath = normalizedPath.replace(regex, ":$1")
+  const regex = /\[(.*?)\]/g;
+  const strippedPath = normalizedPath.replace(regex, ":$1");
 
-  const url = strippedPath.replace(/\/page\.[jt]sx?$/i, "")
+  const url = strippedPath.replace(/\/page\.[jt]sx?$/i, "");
 
-  return url
+  return url;
 }
 
 function isForbiddenRoute(path: any): boolean {
-  return forbiddenRoutes.includes(path)
+  return forbiddenRoutes.includes(path);
 }
 
 function validatePath(
   path: string,
   origin: string
 ): {
-  valid: boolean
-  error: string
+  valid: boolean;
+  error: string;
 } {
   if (isForbiddenRoute(path)) {
     return {
       error: `A route from ${origin} is using a forbidden path: ${path}.`,
       valid: false,
-    }
+    };
   }
 
-  const specialChars = ["/", ":", "-"]
+  const specialChars = ["/", ":", "-"];
 
   for (let i = 0; i < path.length; i++) {
-    const currentChar = path[i]
+    const currentChar = path[i];
 
     if (
       !specialChars.includes(currentChar) &&
@@ -354,21 +354,21 @@ function validatePath(
       return {
         error: `A route from ${origin} is using an invalid path: ${path}. Only alphanumeric characters, "/", ":", and "-" are allowed.`,
         valid: false,
-      }
+      };
     }
 
     if (currentChar === ":" && (i === 0 || path[i - 1] !== "/")) {
       return {
         error: `A route from ${origin} is using an invalid path: ${path}. All dynamic segments must be preceded by a "/".`,
         valid: false,
-      }
+      };
     }
   }
 
   return {
     valid: true,
     error: "",
-  }
+  };
 }
 
 /**
@@ -382,115 +382,115 @@ async function validateRoute(
   file: string,
   basePath: string
 ): Promise<{
-  path: string
-  hasConfig: boolean
-  file: string
+  path: string;
+  hasConfig: boolean;
+  file: string;
 } | null> {
-  const cleanPath = createPath(file.replace(basePath, ""))
+  const cleanPath = createPath(file.replace(basePath, ""));
 
-  const { valid, error } = validatePath(cleanPath, file)
+  const { valid, error } = validatePath(cleanPath, file);
 
   if (!valid) {
     logger.error(
       `The path ${cleanPath} for the UI Route "${file}" is invalid and the route cannot be injected. The following error must be fixed before the route can be injected: ${error}`
-    )
+    );
 
-    return null
+    return null;
   }
 
-  const content = await fse.readFile(file, "utf-8")
+  const content = await fse.readFile(file, "utf-8");
 
-  let hasComponentExport = false
-  let hasConfigExport = false
+  let hasComponentExport = false;
+  let hasConfigExport = false;
 
   const parserOptions: ParserOptions = {
     sourceType: "module",
     plugins: ["jsx"],
-  }
+  };
 
   if (file.endsWith(".ts") || file.endsWith(".tsx")) {
-    parserOptions.plugins.push("typescript")
+    parserOptions.plugins.push("typescript");
   }
 
-  let ast: ParseResult<any>
+  let ast: ParseResult<any>;
 
   try {
-    ast = parse(content, parserOptions)
+    ast = parse(content, parserOptions);
   } catch (e) {
     logger.error(
       `An error occurred while parsing the UI Route "${file}", and the UI Route cannot be injected. The following error must be resolved before continuing:`,
       {
         error: e,
       }
-    )
-    return null
+    );
+    return null;
   }
 
   try {
     traverse(ast, {
-      ExportDefaultDeclaration: (path) => {
-        hasComponentExport = validateDefaultExport(path, ast)
+      ExportDefaultDeclaration: (path: any) => {
+        hasComponentExport = validateDefaultExport(path, ast);
       },
-      ExportNamedDeclaration: (path) => {
-        hasConfigExport = validateConfigExport(path, "route")
+      ExportNamedDeclaration: (path: any) => {
+        hasConfigExport = validateConfigExport(path, "route");
       },
-    })
+    });
   } catch (e) {
     logger.error(
       `An error occurred while validating the UI Route "${file}", and the UI Route cannot be injected. The following error must be resolved before continuing:`,
       {
         error: e,
       }
-    )
-    return null
+    );
+    return null;
   }
 
   if (!hasComponentExport) {
     logger.error(
       `The default export in the UI Route "${file}" is invalid and the route cannot be injected. Please make sure that the default export is a valid React component.`
-    )
+    );
 
-    return null
+    return null;
   }
 
   return {
     path: cleanPath,
     hasConfig: hasConfigExport,
     file,
-  }
+  };
 }
 
 async function validateSetting(file: string, basePath: string) {
-  const cleanPath = createPath(file.replace(basePath, ""))
+  const cleanPath = createPath(file.replace(basePath, ""));
 
-  const { valid, error } = validatePath(cleanPath, file)
+  const { valid, error } = validatePath(cleanPath, file);
 
   if (!valid) {
     logger.error(
       `The path ${cleanPath} for the Setting "${file}" is invalid and the setting cannot be injected. The following error must be fixed before the Setting can be injected: ${error}`
-    )
+    );
 
-    return null
+    return null;
   }
 
-  const content = await fse.readFile(file, "utf-8")
+  const content = await fse.readFile(file, "utf-8");
 
-  let hasComponentExport = false
-  let hasConfigExport = false
+  let hasComponentExport = false;
+  let hasConfigExport = false;
 
   const parserOptions: ParserOptions = {
     sourceType: "module",
     plugins: ["jsx"],
-  }
+  };
 
   if (file.endsWith(".ts") || file.endsWith(".tsx")) {
-    parserOptions.plugins.push("typescript")
+    parserOptions.plugins.push("typescript");
   }
 
-  let ast: ParseResult<any>
+  let ast: ParseResult<any>;
 
   try {
-    ast = parse(content, parserOptions)
+    ast = parse(content, parserOptions);
   } catch (e) {
     logger.error(
       `
@@ -499,20 +499,20 @@ async function validateSetting(file: string, basePath: string) {
       {
         error: e,
       }
-    )
+    );
 
-    return null
+    return null;
   }
 
   try {
     traverse(ast, {
-      ExportDefaultDeclaration: (path) => {
-        hasComponentExport = validateDefaultExport(path, ast)
+      ExportDefaultDeclaration: (path: any) => {
+        hasComponentExport = validateDefaultExport(path, ast);
       },
-      ExportNamedDeclaration: (path) => {
-        hasConfigExport = validateConfigExport(path, "setting")
+      ExportNamedDeclaration: (path: any) => {
+        hasConfigExport = validateConfigExport(path, "setting");
       },
-    })
+    });
   } catch (e) {
     logger.error(
       `
@@ -520,62 +520,62 @@ async function validateSetting(file: string, basePath: string) {
       {
         error: e,
       }
-    )
-    return null
+    );
+    return null;
   }
 
   if (!hasComponentExport) {
     logger.error(
       `The default export in the Setting "${file}" is invalid and the page will not be injected. Please make sure that the default export is a valid React component.`
-    )
+    );
 
-    return null
+    return null;
   }
 
   if (!hasConfigExport) {
     logger.error(
       `The named export "config" in the Setting "${file}" is invalid or missing and the settings page will not be injected. Please make sure that the file exports a valid config.`
-    )
+    );
 
-    return null
+    return null;
   }
 
   return {
     path: cleanPath,
     file,
-  }
+  };
 }
 
 async function findAllValidSettings(dir: string) {
-  const settingsFiles: string[] = []
+  const settingsFiles: string[] = [];
 
-  const dirExists = await fse.pathExists(dir)
+  const dirExists = await fse.pathExists(dir);
 
   if (!dirExists) {
-    return []
+    return [];
   }
 
-  const paths = await fse.readdir(dir)
+  const paths = await fse.readdir(dir);
 
-  let hasSubDirs = false
+  let hasSubDirs = false;
 
   // We only check the first level of directories for settings files
   for (const pa of paths) {
-    const filePath = path.join(dir, pa)
-    const fileStat = await fse.stat(filePath)
+    const filePath = path.join(dir, pa);
+    const fileStat = await fse.stat(filePath);
 
     if (fileStat.isDirectory()) {
-      const files = await fse.readdir(filePath)
+      const files = await fse.readdir(filePath);
 
       for (const file of files) {
-        const filePath = path.join(dir, pa, file)
-        const fileStat = await fse.stat(filePath)
+        const filePath = path.join(dir, pa, file);
+        const fileStat = await fse.stat(filePath);
 
         if (fileStat.isFile() && /^(.*\/)?page\.[jt]sx?$/i.test(file)) {
-          settingsFiles.push(filePath)
-          break
+          settingsFiles.push(filePath);
+          break;
         } else if (fileStat.isDirectory()) {
-          hasSubDirs = true
+          hasSubDirs = true;
         }
       }
     }
@@ -584,14 +584,14 @@ async function findAllValidSettings(dir: string) {
   if (hasSubDirs) {
     logger.warn(
       `The directory ${dir} contains subdirectories. Settings do not support nested routes, only UI Routes support nested paths.`
-    )
+    );
   }
 
   const validSettingsFiles = await Promise.all(
     settingsFiles.map(async (file) => validateSetting(file, dir))
-  )
+  );
 
-  return validSettingsFiles.filter((file) => file !== null)
+  return validSettingsFiles.filter((file) => file !== null);
 }
 
 /**
@@ -599,40 +599,40 @@ async function findAllValidSettings(dir: string) {
  * A valid widget is a file that exports a valid widget config and a valid React component.
  */
 async function findAllValidWidgets(dir: string) {
-  const jsxAndTsxFiles: string[] = []
+  const jsxAndTsxFiles: string[] = [];
 
-  const dirExists = await fse.pathExists(dir)
+  const dirExists = await fse.pathExists(dir);
 
   if (!dirExists) {
-    return []
+    return [];
   }
 
   async function traverseDirectory(currentPath: string) {
-    const files = await fse.readdir(currentPath)
+    const files = await fse.readdir(currentPath);
 
     for (const file of files) {
-      const filePath = path.join(currentPath, file)
-      const fileStat = await fse.stat(filePath)
+      const filePath = path.join(currentPath, file);
+      const fileStat = await fse.stat(filePath);
 
       if (fileStat.isDirectory()) {
-        await traverseDirectory(filePath)
+        await traverseDirectory(filePath);
       } else if (fileStat.isFile() && /\.(js|jsx|ts|tsx)$/i.test(file)) {
-        jsxAndTsxFiles.push(filePath)
+        jsxAndTsxFiles.push(filePath);
       }
     }
   }
 
-  await traverseDirectory(dir)
+  await traverseDirectory(dir);
 
   const promises = jsxAndTsxFiles.map((file) => {
-    const isValid = validateWidget(file)
+    const isValid = validateWidget(file);
 
-    return isValid ? file : null
-  })
+    return isValid ? file : null;
+  });
 
-  const validFiles = await Promise.all(promises)
+  const validFiles = await Promise.all(promises);
 
-  return validFiles.filter((file) => file !== null)
+  return validFiles.filter((file) => file !== null);
 }
 
 /**
@@ -640,46 +640,46 @@ async function findAllValidWidgets(dir: string) {
  * A valid route is a file that exports a optional route config and a valid React component.
  */
 async function findAllValidRoutes(dir: string) {
-  const pageFiles: string[] = []
+  const pageFiles: string[] = [];
 
-  const dirExists = await fse.pathExists(dir)
+  const dirExists = await fse.pathExists(dir);
 
   if (!dirExists) {
-    return []
+    return [];
   }
 
   async function traverseDirectory(currentPath: string) {
-    const files = await fse.readdir(currentPath)
+    const files = await fse.readdir(currentPath);
 
     for (const file of files) {
-      const filePath = path.join(currentPath, file)
-      const fileStat = await fse.stat(filePath)
+      const filePath = path.join(currentPath, file);
+      const fileStat = await fse.stat(filePath);
 
       if (fileStat.isDirectory()) {
-        await traverseDirectory(filePath)
+        await traverseDirectory(filePath);
       } else if (fileStat.isFile() && /^(.*\/)?page\.[jt]sx?$/i.test(file)) {
-        pageFiles.push(filePath)
+        pageFiles.push(filePath);
       }
     }
   }
 
-  await traverseDirectory(dir)
+  await traverseDirectory(dir);
 
   const promises = pageFiles.map(async (file) => {
-    return validateRoute(file, dir)
-  })
+    return validateRoute(file, dir);
+  });
 
-  const validFiles = await Promise.all(promises)
+  const validFiles = await Promise.all(promises);
 
-  return validFiles.filter((file) => file !== null)
+  return validFiles.filter((file) => file !== null);
 }
 
 export {
   createPath,
-  validateWidget,
-  validateRoute,
-  validateSetting,
+  findAllValidRoutes,
   findAllValidSettings,
   findAllValidWidgets,
-  findAllValidRoutes,
-}
+  validateRoute,
+  validateSetting,
+  validateWidget,
+};
