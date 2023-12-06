@@ -15,7 +15,7 @@ const getDevServerConfig = () => {
     entry: path.resolve(__dirname, "ui", "src", "main.tsx"),
     env: "development",
     options: {
-      backend: "http://localhost:9000",
+      backend: process.env.MEDUSA_BACKEND_URL,
       path: "/",
     },
     template: path.resolve(__dirname, "ui", "index.html"),
@@ -44,11 +44,7 @@ const getDevServerConfig = () => {
           directory: path.resolve(__dirname, "./ui/public"),
           publicPath: "/",
         },
-        open: false,
-        onListening: function () {
-          openBrowser(`http://localhost:7001`)
-        },
-        allowedHosts: "auto",
+        allowedHosts: process.env.ALLOWED_HOSTS,
       } as Configuration,
     },
   }
